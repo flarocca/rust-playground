@@ -1,0 +1,7 @@
+[workspace]
+members = ["async_runtime", "channels", "recursive_data_structures"]
+
+[workspace.package]
+version = "0.0.1"
+authors = ["Facundo La Rocca"]
+description = "Rust project for educational purposes"

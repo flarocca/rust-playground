@@ -74,6 +74,10 @@ name = "channels"
 version = "0.1.0"
 
 [[package]]
+name = "code_challenges"
+version = "0.0.1"
+
+[[package]]
 name = "gimli"
 version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

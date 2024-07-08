@@ -1,168 +1,126 @@
 #[derive(Debug, Clone)]
-enum Link<T> {
+pub enum LinkedList<T> {
     Empty,
     More(Box<Node<T>>),
 }
 
-impl<T> Link<T> {
-    fn new_with_elem(elem: T) -> Self {
-        Self::More(Box::new(Node {
-            elem,
-            next: Link::Empty,
-        }))
-    }
-
-    fn new_with_elem_and_next(elem: T, next: Link<T>) -> Self {
-        Self::More(Box::new(Node { elem, next }))
-    }
+#[derive(Debug, Clone)]
+pub struct Node<T> {
+    elem: T,
+    next: LinkedList<T>,
 }
 
-impl<T> Default for Link<T> {
-    fn default() -> Self {
+impl<T: Clone + Copy> LinkedList<T> {
+    pub fn new() -> Self {
         Self::Empty
     }
-}
 
-#[derive(Debug, Clone)]
-struct Node<T> {
-    elem: T,
-    next: Link<T>,
-}
-
-impl<T> Node<T> {
-    fn is_last(&self) -> bool {
-        matches!(self.next, Link::Empty)
-    }
-}
-
-#[derive(Debug)]
-pub struct LinkedList<T> {
-    head: Link<T>,
-    length: usize,
-}
-
-impl<T: Copy> LinkedList<T> {
-    pub fn new() -> Self {
-        LinkedList {
-            head: Link::Empty,
-            length: 0,
-        }
+    fn new_with_elem(elem: T) -> Self {
+        Self::new_with_elem_and_next(elem, LinkedList::Empty)
     }
 
-    pub fn push(&mut self, elem: T) {
-        let mut current = &mut self.head;
-        loop {
-            match current {
-                Link::Empty => {
-                    let _ = std::mem::replace(current, Link::new_with_elem(elem));
-                    break;
-                }
-                Link::More(node) if node.is_last() => {
-                    let _ = std::mem::replace(&mut node.next, Link::new_with_elem(elem));
-                    break;
-                }
-                Link::More(node) => {
-                    current = &mut node.next;
-                }
+    fn new_with_elem_and_next(elem: T, next: LinkedList<T>) -> Self {
+        Self::More(Box::new(Node { elem, next }))
+    }
+
+    fn priv_insert_at(&mut self, elem: T, position: usize, current: usize) -> bool {
+        match self {
+            LinkedList::Empty if current < position => false,
+            LinkedList::Empty => {
+                self.push(elem);
+                true
+            }
+            LinkedList::More(node) if current + 1 == position => {
+                let mut new =
+                    LinkedList::new_with_elem_and_next(elem, std::mem::take(&mut node.next));
+
+                std::mem::swap(&mut node.next, &mut new);
+                true
+            }
+            LinkedList::More(node) => {
+                Self::priv_insert_at(&mut node.next, elem, position, current + 1)
             }
         }
-        self.length += 1;
     }
 
-    pub fn pop(&mut self) -> Option<T> {
-        let mut current = &mut self.head;
-        loop {
-            match current {
-                Link::Empty => {
-                    return None;
+    fn priv_remove_at(&mut self, position: usize, current: usize) -> Option<T> {
+        match self {
+            LinkedList::Empty => None,
+            LinkedList::More(_) if current == position => self.pop(),
+            LinkedList::More(node) if current + 1 == position => {
+                if let LinkedList::More(next) = &node.next {
+                    let result = next.elem;
+                    node.next = next.next.clone();
+                    return Some(result);
                 }
-                Link::More(node) if node.is_last() => {
-                    let result = Some(node.elem);
-                    let _ = std::mem::replace(current, Link::Empty);
 
-                    self.length -= 1;
-                    return result;
-                }
-                Link::More(node) => {
-                    current = &mut node.next;
-                }
+                None
             }
+            LinkedList::More(node) => Self::priv_remove_at(&mut node.next, position, current + 1),
         }
     }
 
     pub fn len(&self) -> usize {
-        self.length
-    }
-
-    pub fn insert_at(&mut self, elem: T, position: usize) -> bool {
-        let mut current_position = 0;
-        let mut current = &mut self.head;
-        loop {
-            match current {
-                Link::Empty if current_position < position => return false,
-                Link::Empty => {
-                    self.push(elem);
-                    return true;
-                }
-                Link::More(node) if current_position + 1 == position => {
-                    let mut new =
-                        Link::new_with_elem_and_next(elem, std::mem::take(&mut node.next));
-
-                    std::mem::swap(&mut node.next, &mut new);
-                    self.length += 1;
-                    return true;
-                }
-                Link::More(node) => {
-                    current = &mut node.next;
-                }
-            }
-
-            current_position += 1;
-        }
-    }
-
-    pub fn remove_at(&mut self, position: usize) -> Option<T> {
-        let mut current_position = 0;
-        let mut current = &mut self.head;
-        loop {
-            match current {
-                Link::Empty if current_position < position => return None,
-                Link::Empty => {
-                    return self.pop();
-                }
-                Link::More(node) if current_position + 1 == position => {
-                    if let Link::More(next) = &node.next {
-                        let result = next.elem.clone();
-                        node.next = next.next.clone();
-                        self.length -= 1;
-                        return Some(result);
-                    }
-                }
-                Link::More(node) => {
-                    current = &mut node.next;
-                }
-            }
-
-            current_position += 1;
+        match self {
+            LinkedList::Empty => 0,
+            LinkedList::More(node) => 1 + Self::len(&node.next),
         }
     }
 
     pub fn iter(&self) -> LinkedListIterator<T> {
         LinkedListIterator {
-            current: &self.head,
+            current: &self,
             position: 0,
         }
     }
-}
 
-impl<T: Copy> Default for LinkedList<T> {
-    fn default() -> Self {
-        Self::new()
+    pub fn push(&mut self, elem: T) {
+        match self {
+            LinkedList::Empty => {
+                let _ = std::mem::replace(self, LinkedList::new_with_elem(elem));
+            }
+            LinkedList::More(node) => {
+                Self::push(&mut node.next, elem);
+            }
+        }
+    }
+
+    pub fn pop(&mut self) -> Option<T> {
+        match self {
+            LinkedList::Empty => None,
+            LinkedList::More(node) if node.is_last() => {
+                let result = Some(node.elem);
+                let _ = std::mem::replace(self, LinkedList::Empty);
+
+                result
+            }
+            LinkedList::More(node) => Self::pop(&mut node.next),
+        }
+    }
+
+    pub fn insert_at(&mut self, elem: T, position: usize) -> bool {
+        self.priv_insert_at(elem, position, 0)
+    }
+
+    pub fn remove_at(&mut self, position: usize) -> Option<T> {
+        self.priv_remove_at(position, 0)
     }
 }
 
-pub struct LinkedListIterator<'a, T> {
-    current: &'a Link<T>,
+impl<T: Clone> Default for LinkedList<T> {
+    fn default() -> Self {
+        Self::Empty
+    }
+}
+
+impl<T: Clone> Node<T> {
+    fn is_last(&self) -> bool {
+        matches!(self.next, LinkedList::Empty)
+    }
+}
+
+pub struct LinkedListIterator<'a, T: Clone> {
+    current: &'a LinkedList<T>,
     position: usize,
 }
 
@@ -171,8 +129,8 @@ impl<'a, T: Copy> Iterator for LinkedListIterator<'a, T> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.current {
-            Link::Empty => None,
-            Link::More(node) => {
+            LinkedList::Empty => None,
+            LinkedList::More(node) => {
                 self.current = &node.next;
                 self.position += 1;
                 return Some((self.position - 1, node.elem));

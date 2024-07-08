@@ -1,5 +1,5 @@
 [workspace]
-members = ["async_runtime", "channels", "recursive_data_structures"]
+members = ["async_runtime", "channels", "code_challenges", "recursive_data_structures"]
 
 [workspace.package]
 version = "0.0.1"

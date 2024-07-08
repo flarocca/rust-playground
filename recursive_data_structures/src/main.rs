@@ -1,8 +1,9 @@
-use linked_list::LinkedList;
-
-mod common;
+mod binary_tree;
 mod double_linked_list;
 mod linked_list;
+mod linked_list_v2;
+
+use linked_list::LinkedList;
 
 fn main() {
     let mut list = LinkedList::<i32>::new();
